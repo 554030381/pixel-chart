@@ -1,0 +1,158 @@
+<script setup>
+import * as d3 from 'd3'
+import {onMounted, defineProps} from "vue";
+import * as XLSX from "xlsx";
+import {isNumber, mapValueToColor} from '@/utils/common.js'
+import * as dhc from 'd3-horizon-chart'
+
+const props = defineProps({
+  NAME_SPACE: '',
+  FILE_NAME: '',
+  SHEET_NAME: '',
+  TITLE: '',
+  isDayDimension: false
+})
+
+const FIELD = [
+  '数据时间段',
+  '进入人数',
+  '观看人数',
+  '平均在线人数',
+  '评论数',
+  '新增粉丝数',
+  '自然流量',
+  '付费流量',
+  '互动率',
+  '自然流量转化率',
+  '付费流量转化率',
+  'GMV占比',
+  'GMV',
+  'UV价值',
+  'GPM',
+  '投放消耗',
+  '广告ROI',
+  '整体ROI'
+]
+
+const EXCULDE_FIELD = [
+  // '数据时间段',
+  // '日期',
+  // '时间',
+  // '分钟级时间戳',
+  // '标准推广ROI',
+  // '整体ROI',
+  // '投放ROI',
+  // '投放成单率',
+  // '广告点击率'
+]
+
+const COLOR = [34, 139, 34]
+const GRID_WIDTH = 2
+const GRID_HEIGHT = 10
+let GRID_COL_NUM = null
+let GRID_ROW_NUM = null
+let LINE_CHART_WIDTH = GRID_COL_NUM * GRID_WIDTH
+const GRAPH_CHART_HEIGHT = 40
+const LINE_CHART_MARGIN = {top: 20, right: 20, bottom: 20, left: 20};
+const TEXT_WIDTH = 140
+const TEXT_HEIGHT = 8
+
+onMounted(async () => {
+  // 像素图数据（示例）
+  const f = await fetch(`/${props.FILE_NAME}`)
+  const d = await f.arrayBuffer()
+// 将得到的二进制转化一下
+  let workbook = XLSX.read(d, {type: "binary"});
+  //打印的workbook如图所示:https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8587ef9092424bcfb02d75d5513333ef~tplv-k3u1fbpfcp-watermark.image?
+  // console.log("workbook", workbook); //这里就是可读取的文件了
+  // 最后把数据转成json格式的
+  let worksheet = workbook.Sheets[props.SHEET_NAME]; //这里是表格的名字,这里取第一个表格,1就是第二个表格数据
+  //打印的worksheet如图所示:https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a3de2e1f5b6c490faadc76604193d0ab~tplv-k3u1fbpfcp-watermark.image?
+  // console.log("worksheet", worksheet);
+  //将得到的worksheet转化为json格式
+  let data = XLSX.utils.sheet_to_json(worksheet);
+  const fields = Object.keys(data[0]).filter(field => !EXCULDE_FIELD.includes(field))
+  // const fields = FIELD.filter(field => !EXCULDE_FIELD.includes(field))
+  // console.log(fields)
+  const fieldValues = fields.map(field => data.map(d => /%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
+  // console.log(fieldValues)
+  GRID_COL_NUM = fieldValues[0].length
+  GRID_ROW_NUM = fieldValues.length
+  LINE_CHART_WIDTH = GRID_COL_NUM * GRID_WIDTH
+  let fieldObj = fields.reduce((obj, field, i) => {
+    obj[field] = {}
+    obj[field].value = fieldValues[i]
+    obj[field].min = Math.min(...fieldValues[i].filter(item => isNumber(item)))
+    obj[field].max = Math.max(...fieldValues[i].filter(item => isNumber(item)))
+    obj[field].mapValue = fieldValues[i].map((value) => {
+      return mapValueToColor(COLOR, value, obj[field].min, obj[field].max)
+    })
+    return obj
+  }, {})
+
+  const container = d3.select(`#${props.NAME_SPACE}-horizon-chart`)
+  fields.map((k, idx) => {
+    let horizonChart = dhc.horizonChart()
+        .height(GRAPH_CHART_HEIGHT)
+        .title(k)
+        .step(props.isDayDimension ? 10 : 1)
+        .canvas(d3.create('canvas').attr('width', 1000).attr('height', 40))
+        .colors(['#313695', '#4575b4', '#74add1', '#abd9e9', '#E2A28F', '#D9876C', '#D2694B', '#B54B2D']);
+
+    let horizons = container
+        .append('g')
+        .attr("y", (d, i) => idx * GRAPH_CHART_HEIGHT)
+        .selectAll('.horizon')
+        .data([fieldObj[k].value])
+        .enter().append('div')
+        .attr('class', 'horizon')
+        .each(horizonChart);
+  })
+
+})
+</script>
+
+<template>
+  <h3>{{ props.TITLE }}</h3>
+  <div :id="`${props.NAME_SPACE}-horizon-chart`"></div>
+</template>
+
+<style lang="scss" scoped>
+.horizon {
+  border-top: solid 1px #000;
+  border-bottom: solid 1px #000;
+  overflow: hidden;
+  position: relative;
+  display: flex !important;
+}
+
+.horizon + .horizon {
+  border-top: none;
+}
+
+.horizon canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.horizon .title,
+.horizon .value {
+  display: block;
+  flex: 0 0 100px;
+  //bottom: 0;
+  //line-height: 30px;
+  //margin: 0 6px;
+  //position: absolute;
+  //font-family: sans-serif;
+  //text-shadow: 0 1px 0 rgba(255,255,255,.5);
+  //white-space: nowrap;
+}
+
+.horizon .title {
+  left: 0;
+}
+
+.horizon .value {
+  right: 0;
+}
+</style>
