@@ -37,9 +37,12 @@ const FIELD = [
 
 const EXCULDE_FIELD = [
   // '数据时间段',
-  // '日期',
-  // '时间',
-  // '分钟级时间戳',
+  '日期',
+  '时间',
+  '分钟级时间戳',
+  '小店随心推',
+  '品牌广告',
+  '千川品牌广告'
   // '标准推广ROI',
   // '整体ROI',
   // '投放ROI',
@@ -71,11 +74,11 @@ onMounted(async () => {
   // console.log("worksheet", worksheet);
   //将得到的worksheet转化为json格式
   let data = XLSX.utils.sheet_to_json(worksheet);
-  const fields = Object.keys(data[0]).filter(field => !EXCULDE_FIELD.includes(field))
+  const fields = Object.keys(data[0])
   // const fields = FIELD.filter(field => !EXCULDE_FIELD.includes(field))
   // console.log(fields)
   const fieldValues = fields.map(field => data.map(d => /%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
-  // console.log(fieldValues)
+  console.log(fieldValues)
   GRID_COL_NUM = fieldValues[0].length
   GRID_ROW_NUM = fieldValues.length
   LINE_CHART_WIDTH = GRID_COL_NUM * GRID_WIDTH
@@ -91,14 +94,26 @@ onMounted(async () => {
   }, {})
 
   console.log(fieldObj)
+  // debugger
   const container = d3.select(`#${props.NAME_SPACE}-horizon-chart`)
   fields.map((k, idx) => {
+    if(EXCULDE_FIELD.includes(k)) return
     const rowData = fieldObj[k]
-    const colorsTemplate = ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#08519c", "#08306b"]
+    k === '标准推广ROI' && console.log(rowData)
+    const colorsTemplate = ["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#08519c"]
+//     const colorsTemplate = [
+//   "#add8e6", "#a4d2e4", "#9acde3", "#91c8e1", "#88c2df", 
+//   "#7ebdda", "#75b7d6", "#6bb1d2", "#62abce", "#58a5ca",
+//   "#4f9fc5", "#4599c1", "#3c93bd", "#328db9", "#2987b5",
+//   "#1f81b0", "#167bab", "#0c75a7", "#036fa2", "#00699d",
+//   "#005499", "#004e95", "#004890", "#00428b", "#003c86",
+//   "#003682", "#00307d", "#002a78", "#002573", "#001f6e"
+// ]
     const colors = colorsTemplate.map((color, idx) => {
-      const len = colorsTemplate.length
-      const step = parseInt(len / props.bands)
-      return colorsTemplate[idx * step]
+      // const len = colorsTemplate.length
+      // const step = parseInt(len / props.bands)
+      // return colorsTemplate[idx * step]
+      return color
     })
     // Derive series, sorted by date.
     // Specify the dimensions of the chart.
@@ -180,17 +195,17 @@ onMounted(async () => {
 
     // Add the horizontal axis.
     const totalPoint = rowData.value.length
-    const ticks = Math.floor(width / 100)
+    const ticks = Math.floor(width / 128)
     svg.append("g")
         .attr("transform", `translate(0,${marginTop})`)
         .call(d3.axisTop(x).ticks(ticks).tickSizeOuter(0).tickFormat((d, i) => {
           const date = fieldObj['日期'].value
           const time = fieldObj['时间'].value
-          const idx = Math.floor(totalPoint / (ticks + 1) + i * totalPoint / (ticks + 1))
+          const idx = Math.floor((i) * totalPoint / ticks)
           return `${date[idx]} ${time[idx]}:00`
         }))
-        .call(g => g.selectAll(".tick").filter(d => x(d) < marginLeft || x(d) >= width - marginRight).remove())
-        .call(g => g.select(".domain").remove())
+        // .call(g => g.selectAll(".tick").filter(d => x(d) < marginLeft || x(d) >= width - marginRight).remove())
+        // .call(g => g.select(".domain").remove())
 
     container
         .append('g')

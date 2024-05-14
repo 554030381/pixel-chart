@@ -1,6 +1,6 @@
 <template>
   <h1>{{ `${brand} 4月18日——4月25日数据` }}</h1>
-  <input :value="bands" @change="handleChange" placeholder="bands 1~9"/>
+  <input :value="bands" @change="handleChange" placeholder="bands 1~7"/>
   <div v-if="isShow">
     <template v-if="brand==='sisley'">
       <h2>分钟</h2>

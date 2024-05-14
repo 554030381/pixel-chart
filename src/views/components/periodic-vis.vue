@@ -35,9 +35,12 @@ const FIELD = [
 
 const EXCULDE_FIELD = [
   // '数据时间段',
-  // '日期',
-  // '时间',
-  // '分钟级时间戳',
+  '日期',
+  '时间',
+  '分钟级时间戳',
+  '小店随心推',
+  '品牌广告',
+  '千川品牌广告'
   // '标准推广ROI',
   // '整体ROI',
   // '投放ROI',
@@ -74,7 +77,7 @@ onMounted(async () => {
   //将得到的worksheet转化为json格式
   let data = XLSX.utils.sheet_to_json(worksheet);
   // console.log(data)
-  const fields = Object.keys(data[0]).filter(field => !EXCULDE_FIELD.includes(field))
+  const fields = Object.keys(data[0])
   // const fields = FIELD.filter(field => !EXCULDE_FIELD.includes(field))
   // console.log(fields)
   const fieldValues = fields.map(field => data.map(d => /%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
@@ -95,7 +98,7 @@ onMounted(async () => {
   // console.log(fieldObj)
   const echartsFields = {}
   Object.keys(fieldObj).map(field => {
-    if (field === '时间') return
+    if(EXCULDE_FIELD.includes(field)) return
     const echartsData = echartsFields[field] = []
     const colorList = fieldObj[field].mapValue
     const valueList = fieldObj[field].value
