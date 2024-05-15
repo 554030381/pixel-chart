@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import {onMounted} from "vue";
 import * as XLSX from "xlsx";
 import {mapValueToColor, bilinearInterpolation, isNumber} from '@/utils/common.js'
+import { EXCULDE_FIELD } from '@/config.js';
 
 const props = defineProps({
   NAME_SPACE: '',
@@ -10,31 +11,6 @@ const props = defineProps({
   SHEET_NAME: '',
   TITLE: ''
 })
-
-const FIELD = [
-  '数据时间段',
-  '进入人数',
-  '观看人数',
-  '平均在线人数',
-  '评论数',
-  '新增粉丝数',
-  '自然流量',
-  '付费流量',
-  '互动率',
-  '自然流量转化率',
-  '付费流量转化率',
-  'GMV占比',
-  'GMV',
-  'UV价值',
-  'GPM',
-  '投放消耗',
-  '广告ROI',
-  '整体ROI'
-]
-
-const EXCULDE_FIELD = [
-  // '数据时间段'
-]
 
 const COLOR = [34, 139, 34]
 const GRID_WIDTH = 2
@@ -61,8 +37,7 @@ onMounted(async () => {
   // console.log("worksheet", worksheet);
   //将得到的worksheet转化为json格式
   let data = XLSX.utils.sheet_to_json(worksheet);
-  const fields = Object.keys(data[0]).filter(field => !EXCULDE_FIELD.includes(field))
-  // const fields = FIELD.filter(field => !EXCULDE_FIELD.includes(field))
+  const fields = Object.keys(data[0]).filter(field => !EXCULDE_FIELD[Object.keys(EXCULDE_FIELD).filter((item) => props.TITLE.indexOf(item) !== -1)[0]].includes(field))
   // console.log(fields)
   const fieldValues = fields.map(field => data.map(d => /%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
   // console.log(fieldValues)

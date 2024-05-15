@@ -2,6 +2,7 @@
 import {inject, nextTick, onMounted, reactive,defineProps} from "vue";
 import * as XLSX from "xlsx";
 import {mapValueToColor,isNumber} from '@/utils/common.js'
+import { EXCULDE_FIELD } from '@/config.js';
 
 const echarts = inject('$echarts')
 
@@ -11,42 +12,6 @@ const props = defineProps({
   SHEET_NAME: '',
   TITLE: ''
 })
-
-const FIELD = [
-  '数据时间段',
-  '进入人数',
-  '观看人数',
-  '平均在线人数',
-  '评论数',
-  '新增粉丝数',
-  '自然流量',
-  '付费流量',
-  '互动率',
-  '自然流量转化率',
-  '付费流量转化率',
-  'GMV占比',
-  'GMV',
-  'UV价值',
-  'GPM',
-  '投放消耗',
-  '广告ROI',
-  '整体ROI'
-]
-
-const EXCULDE_FIELD = [
-  // '数据时间段',
-  '日期',
-  '时间',
-  '分钟级时间戳',
-  '小店随心推',
-  '品牌广告',
-  '千川品牌广告'
-  // '标准推广ROI',
-  // '整体ROI',
-  // '投放ROI',
-  // '投放成单率',
-  // '广告点击率'
-]
 
 const COLOR = [34, 139, 34]
 const RADIUS_RANGE = [10, 90]
@@ -98,7 +63,8 @@ onMounted(async () => {
   // console.log(fieldObj)
   const echartsFields = {}
   Object.keys(fieldObj).map(field => {
-    if(EXCULDE_FIELD.includes(field)) return
+    if (EXCULDE_FIELD[Object.keys(EXCULDE_FIELD).filter((item) => props.TITLE.indexOf(item) !== -1)[0]].includes(field))
+      return;
     const echartsData = echartsFields[field] = []
     const colorList = fieldObj[field].mapValue
     const valueList = fieldObj[field].value

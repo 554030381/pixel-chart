@@ -1,9 +1,10 @@
 <script setup>
-import * as d3 from 'd3'
-import {onMounted, defineProps} from "vue";
-import * as XLSX from "xlsx";
-import {isNumber, mapValueToColor} from '@/utils/common.js'
-import * as dhc from 'd3-horizon-chart'
+import * as d3 from 'd3';
+import { onMounted, defineProps } from 'vue';
+import * as XLSX from 'xlsx';
+import { isNumber, mapValueToColor } from '@/utils/common.js';
+import * as dhc from 'd3-horizon-chart';
+import { EXCULDE_FIELD } from '@/config.js';
 
 const props = defineProps({
   NAME_SPACE: '',
@@ -11,110 +12,74 @@ const props = defineProps({
   SHEET_NAME: '',
   TITLE: '',
   isDayDimension: false,
-  bands: 4
-})
+  bands: 4,
+});
 
-const FIELD = [
-  '数据时间段',
-  '进入人数',
-  '观看人数',
-  '平均在线人数',
-  '评论数',
-  '新增粉丝数',
-  '自然流量',
-  '付费流量',
-  '互动率',
-  '自然流量转化率',
-  '付费流量转化率',
-  'GMV占比',
-  'GMV',
-  'UV价值',
-  'GPM',
-  '投放消耗',
-  '广告ROI',
-  '整体ROI'
-]
-
-const EXCULDE_FIELD = [
-  // '数据时间段',
-  '日期',
-  '时间',
-  '分钟级时间戳',
-  '小店随心推',
-  '品牌广告',
-  '千川品牌广告'
-  // '标准推广ROI',
-  // '整体ROI',
-  // '投放ROI',
-  // '投放成单率',
-  // '广告点击率'
-]
-
-const COLOR = [34, 139, 34]
-const GRID_WIDTH = 2
-const GRID_HEIGHT = 10
-let GRID_COL_NUM = null
-let GRID_ROW_NUM = null
-let LINE_CHART_WIDTH = GRID_COL_NUM * GRID_WIDTH
-const GRAPH_CHART_HEIGHT = 40
-const LINE_CHART_MARGIN = {top: 20, right: 20, bottom: 20, left: 20};
-const TEXT_WIDTH = 140
-const TEXT_HEIGHT = 8
+const COLOR = [34, 139, 34];
+const GRID_WIDTH = 2;
+const GRID_HEIGHT = 10;
+let GRID_COL_NUM = null;
+let GRID_ROW_NUM = null;
+let LINE_CHART_WIDTH = GRID_COL_NUM * GRID_WIDTH;
+const GRAPH_CHART_HEIGHT = 40;
+const LINE_CHART_MARGIN = { top: 20, right: 20, bottom: 20, left: 20 };
+const TEXT_WIDTH = 140;
+const TEXT_HEIGHT = 8;
 onMounted(async () => {
   // 像素图数据（示例）
-  const f = await fetch(`/${props.FILE_NAME}`)
-  const d = await f.arrayBuffer()
-// 将得到的二进制转化一下
-  let workbook = XLSX.read(d, {type: "binary"});
-  //打印的workbook如图所示:https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8587ef9092424bcfb02d75d5513333ef~tplv-k3u1fbpfcp-watermark.image?
+  const f = await fetch(`/${props.FILE_NAME}`);
+  const d = await f.arrayBuffer();
+  // 将得到的二进制转化一下
+  let workbook = XLSX.read(d, { type: 'binary' });
   // console.log("workbook", workbook); //这里就是可读取的文件了
   // 最后把数据转成json格式的
   let worksheet = workbook.Sheets[props.SHEET_NAME]; //这里是表格的名字,这里取第一个表格,1就是第二个表格数据
-  //打印的worksheet如图所示:https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a3de2e1f5b6c490faadc76604193d0ab~tplv-k3u1fbpfcp-watermark.image?
   // console.log("worksheet", worksheet);
-  //将得到的worksheet转化为json格式
   let data = XLSX.utils.sheet_to_json(worksheet);
-  const fields = Object.keys(data[0])
+  const fields = Object.keys(data[0]);
   // const fields = FIELD.filter(field => !EXCULDE_FIELD.includes(field))
   // console.log(fields)
-  const fieldValues = fields.map(field => data.map(d => /%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
-  console.log(fieldValues)
-  GRID_COL_NUM = fieldValues[0].length
-  GRID_ROW_NUM = fieldValues.length
-  LINE_CHART_WIDTH = GRID_COL_NUM * GRID_WIDTH
+  const fieldValues = fields.map((field) =>
+    data.map((d) => (/%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
+  );
+  console.log(fieldValues);
+  GRID_COL_NUM = fieldValues[0].length;
+  GRID_ROW_NUM = fieldValues.length;
+  LINE_CHART_WIDTH = GRID_COL_NUM * GRID_WIDTH;
   let fieldObj = fields.reduce((obj, field, i) => {
-    obj[field] = {}
-    obj[field].value = fieldValues[i]
-    obj[field].min = Math.min(...fieldValues[i].filter(item => isNumber(item)))
-    obj[field].max = Math.max(...fieldValues[i].filter(item => isNumber(item)))
+    obj[field] = {};
+    obj[field].value = fieldValues[i];
+    obj[field].min = Math.min(...fieldValues[i].filter((item) => isNumber(item)));
+    obj[field].max = Math.max(...fieldValues[i].filter((item) => isNumber(item)));
     obj[field].mapValue = fieldValues[i].map((value) => {
-      return mapValueToColor(COLOR, value, obj[field].min, obj[field].max)
-    })
-    return obj
-  }, {})
+      return mapValueToColor(COLOR, value, obj[field].min, obj[field].max);
+    });
+    return obj;
+  }, {});
 
-  console.log(fieldObj)
+  console.log(fieldObj);
   // debugger
-  const container = d3.select(`#${props.NAME_SPACE}-horizon-chart`)
+  const container = d3.select(`#${props.NAME_SPACE}-horizon-chart`);
   fields.map((k, idx) => {
-    if(EXCULDE_FIELD.includes(k)) return
-    const rowData = fieldObj[k]
-    k === '标准推广ROI' && console.log(rowData)
-    const colorsTemplate = ["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#08519c"]
-//     const colorsTemplate = [
-//   "#add8e6", "#a4d2e4", "#9acde3", "#91c8e1", "#88c2df", 
-//   "#7ebdda", "#75b7d6", "#6bb1d2", "#62abce", "#58a5ca",
-//   "#4f9fc5", "#4599c1", "#3c93bd", "#328db9", "#2987b5",
-//   "#1f81b0", "#167bab", "#0c75a7", "#036fa2", "#00699d",
-//   "#005499", "#004e95", "#004890", "#00428b", "#003c86",
-//   "#003682", "#00307d", "#002a78", "#002573", "#001f6e"
-// ]
+    if (EXCULDE_FIELD[Object.keys(EXCULDE_FIELD).filter((item) => props.TITLE.indexOf(item) !== -1)[0]].includes(k))
+      return;
+    // if (EXCULDE_FIELD.includes(k)) return;
+    const rowData = fieldObj[k];
+    const colorsTemplate = ['#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c'];
+    //     const colorsTemplate = [
+    //   "#add8e6", "#a4d2e4", "#9acde3", "#91c8e1", "#88c2df",
+    //   "#7ebdda", "#75b7d6", "#6bb1d2", "#62abce", "#58a5ca",
+    //   "#4f9fc5", "#4599c1", "#3c93bd", "#328db9", "#2987b5",
+    //   "#1f81b0", "#167bab", "#0c75a7", "#036fa2", "#00699d",
+    //   "#005499", "#004e95", "#004890", "#00428b", "#003c86",
+    //   "#003682", "#00307d", "#002a78", "#002573", "#001f6e"
+    // ]
     const colors = colorsTemplate.map((color, idx) => {
       // const len = colorsTemplate.length
       // const step = parseInt(len / props.bands)
       // return colorsTemplate[idx * step]
-      return color
-    })
+      return color;
+    });
     // Derive series, sorted by date.
     // Specify the dimensions of the chart.
     const marginTop = 30;
@@ -127,93 +92,99 @@ onMounted(async () => {
     const padding = 1;
 
     // Create the horizontal (temporal) scale.
-    const x = d3.scaleLinear()
-        .domain([0, rowData.value.length - 1])
-        .range([0, width]);
+    const x = d3
+      .scaleLinear()
+      .domain([0, rowData.value.length - 1])
+      .range([0, width]);
 
     // Create the vertical scale; it describes the “total” height of the area,
     // when bands are not superimposed. The area shape will start from the y=size position
     // to represent 0 up to *bands* times the maximum band height.
-    const y = d3.scaleLinear()
-        .domain([0, fieldObj[k].max])
-        .range([size, size - props.bands * (size - padding)]);
+    const y = d3
+      .scaleLinear()
+      .domain([0, fieldObj[k].max])
+      .range([size, size - props.bands * (size - padding)]);
 
-    const area = d3.area()
-        .defined(d => !isNaN(d))
-        .x((d, i) => x(i))
-        .y0(size)
-        .y1((d) => y(d));
+    const area = d3
+      .area()
+      .defined((d) => !isNaN(d))
+      .x((d, i) => x(i))
+      .y0(size)
+      .y1((d) => y(d));
 
     // A unique identifier (to avoid conflicts) for the clip rect and the reusable paths.
     const uid = `O-${Math.random().toString(16).slice(2)}`;
     // Create the SVG container.
-    const svg = d3.create("svg")
-        .attr("width", width)
-        .attr("height", height)
-        .attr("viewBox", [0, 0, width, height])
-        .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+    const svg = d3
+      .create('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', [0, 0, width, height])
+      .attr('style', 'max-width: 100%; height: auto; font: 10px sans-serif;');
 
     // Create a G element for each location.
     const myMap = new Map();
     myMap.set(k, rowData.value);
-    const g = svg.append("g")
-        .selectAll("g")
-        .data(myMap)
-        .join("g")
-        .attr("transform", (d, i) => `translate(0,${i * size + marginTop})`);
+    const g = svg
+      .append('g')
+      .selectAll('g')
+      .data(myMap)
+      .join('g')
+      .attr('transform', (d, i) => `translate(0,${i * size + marginTop})`);
 
     // Add a rectangular clipPath and the reference area.
-    const defs = g.append("defs");
-    defs.append("clipPath")
-        .attr("id", (_, i) => `${uid}-clip-${i}`)
-        .append("rect")
-        .attr("y", padding)
-        .attr("width", width)
-        .attr("height", size - padding);
+    const defs = g.append('defs');
+    defs
+      .append('clipPath')
+      .attr('id', (_, i) => `${uid}-clip-${i}`)
+      .append('rect')
+      .attr('y', padding)
+      .attr('width', width)
+      .attr('height', size - padding);
 
-    defs.append("path")
-        .attr("id", (_, i) => `${uid}-path-${i}`)
-        .attr("d", () => area(rowData.value));
+    defs
+      .append('path')
+      .attr('id', (_, i) => `${uid}-path-${i}`)
+      .attr('d', () => area(rowData.value));
 
     // Create a group for each location, in which the reference area will be replicated
     // (with the SVG:use element) for each band, and translated.
-    g.append("g")
-        .attr("clip-path", (_, i) => `url(${new URL(`#${uid}-clip-${i}`, location)})`)
-        .selectAll("use")
-        .data((_, i) => new Array(props.bands).fill(i))
-        .enter().append("use")
-        .attr("xlink:href", (i) => `${new URL(`#${uid}-path-${i}`, location)}`)
-        .attr("fill", (_, i) => colors[i])
-        .attr("transform", (_, i) => `translate(0,${i * size})`);
+    g.append('g')
+      .attr('clip-path', (_, i) => `url(${new URL(`#${uid}-clip-${i}`, location)})`)
+      .selectAll('use')
+      .data((_, i) => new Array(props.bands).fill(i))
+      .enter()
+      .append('use')
+      .attr('xlink:href', (i) => `${new URL(`#${uid}-path-${i}`, location)}`)
+      .attr('fill', (_, i) => colors[i])
+      .attr('transform', (_, i) => `translate(0,${i * size})`);
 
     // Add the labels.
-    g.append("text")
-        .attr("x", 4)
-        .attr("y", (size + padding) / 2)
-        .attr("dy", "0.35em")
-        .text(k);
+    g.append('text')
+      .attr('x', 4)
+      .attr('y', (size + padding) / 2)
+      .attr('dy', '0.35em')
+      .style('font-size', '14px')
+      .text(k);
 
     // Add the horizontal axis.
-    const totalPoint = rowData.value.length
-    const ticks = Math.floor(width / 128)
-    svg.append("g")
-        .attr("transform", `translate(0,${marginTop})`)
-        .call(d3.axisTop(x).ticks(ticks).tickSizeOuter(0).tickFormat((d, i) => {
-          const date = fieldObj['日期'].value
-          const time = fieldObj['时间'].value
-          const idx = Math.floor((i) * totalPoint / ticks)
-          return `${date[idx]} ${time[idx]}:00`
-        }))
-        // .call(g => g.selectAll(".tick").filter(d => x(d) < marginLeft || x(d) >= width - marginRight).remove())
-        // .call(g => g.select(".domain").remove())
+    // const totalPoint = rowData.value.length
+    // const ticks = Math.floor(width / 106)
+    // svg.append("g")
+    //     .attr("transform", `translate(0,${marginTop})`)
+    //     .call(d3.axisTop(x).ticks(ticks).tickSizeOuter(0).tickFormat((d, i) => {
+    //       const date = fieldObj['日期'].value
+    //       const time = fieldObj['时间'].value
+    //       const idx = Math.floor((i+1) * totalPoint / ticks)
+    //       return `${date[idx]} ${time[idx]}:00`
+    //     }))
+    //     .call(g => g.selectAll(".tick").filter(d => x(d) < marginLeft || x(d) >= width - marginRight).remove())
+    //     .call(g => g.select(".domain").remove())
 
-    container
-        .append('g')
-        .append(() => svg.node())
+    container.append('g').append(() => svg.node());
     // debugger
-  })
-
-})
+  });
+});
 </script>
 
 <template>
