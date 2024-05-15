@@ -1,8 +1,8 @@
 <script setup>
-import {inject, nextTick, onMounted, reactive,defineProps} from "vue";
+import {inject, nextTick, onMounted, reactive, defineProps} from "vue";
 import * as XLSX from "xlsx";
-import {mapValueToColor,isNumber} from '@/utils/common.js'
-import { EXCULDE_FIELD } from '@/config.js';
+import {mapValueToColor, isNumber, countOccurrences} from '@/utils/common.js'
+import {EXCULDE_FIELD, SPECIAL_FIELD} from '@/config.js';
 
 const echarts = inject('$echarts')
 
@@ -45,7 +45,20 @@ onMounted(async () => {
   const fields = Object.keys(data[0])
   // const fields = FIELD.filter(field => !EXCULDE_FIELD.includes(field))
   // console.log(fields)
-  const fieldValues = fields.map(field => data.map(d => /%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
+  const fieldValues = fields.map((field) =>
+      data.map((d) => {
+            if (SPECIAL_FIELD[Object.keys(SPECIAL_FIELD).filter((item) => props.TITLE.indexOf(item) !== -1)[0]].includes(field)) {
+              if (d[field]) {
+                return countOccurrences(d[field],`${field}：`)
+              } else {
+                return 0
+              }
+            } else {
+              return (/%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field]))
+            }
+          }
+      )
+  );
   // console.log(fieldValues)
   GRID_COL_NUM = fieldValues[0].length
   GRID_ROW_NUM = fieldValues.length
@@ -53,14 +66,14 @@ onMounted(async () => {
   let fieldObj = fields.reduce((obj, field, i) => {
     obj[field] = {}
     obj[field].value = fieldValues[i]
-    obj[field].min = Math.min(...fieldValues[i].filter(item=>isNumber(item)))
-    obj[field].max = Math.max(...fieldValues[i].filter(item=>isNumber(item)))
+    obj[field].min = Math.min(...fieldValues[i].filter(item => isNumber(item)))
+    obj[field].max = Math.max(...fieldValues[i].filter(item => isNumber(item)))
     obj[field].mapValue = fieldValues[i].map((value) => {
       return mapValueToColor(COLOR, value, obj[field].min, obj[field].max)
     })
     return obj
   }, {})
-  // console.log(fieldObj)
+  console.log(props.TITLE, fieldObj)
   const echartsFields = {}
   Object.keys(fieldObj).map(field => {
     if (EXCULDE_FIELD[Object.keys(EXCULDE_FIELD).filter((item) => props.TITLE.indexOf(item) !== -1)[0]].includes(field))
@@ -166,7 +179,7 @@ onMounted(async () => {
   flex-wrap: wrap;
   width: 100%;
 
-  div{
+  div {
     width: 300px;
     height: 300px;
   }

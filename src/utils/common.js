@@ -127,6 +127,14 @@ function getPixelColor(pixelArray, width, height, x, y) {
   return pixel;
 }
 
+export function countOccurrences(str, char) {
+    // 使用正则表达式匹配字符，使用g标志匹配所有出现的字符
+    const regex = new RegExp(char, 'g');
+    // 使用match方法匹配所有出现的字符，并返回匹配结果的长度
+    const count = (str.match(regex) || []).length;
+    return count;
+}
+
 
 
 

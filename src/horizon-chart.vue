@@ -1,6 +1,15 @@
 <template>
   <h1>{{ `${brand} 4月18日——4月25日数据` }}</h1>
-  <input :value="bands" @change="handleChange" placeholder="bands 1~7"/>
+  <div style="display: flex">
+    <div style="width: 200px;display: flex">
+      <div style="line-height: 30px">bind:</div>
+      <el-input v-model="bandsInput" placeholder="bands 1~7" style="margin-left: 10px"/>
+    </div>
+    <div style="width: 200px;display: flex;margin-left: 20px">
+      <div style="line-height: 30px">是否局部归一化:</div>
+      <el-switch v-model="isNormalized" style="margin-left: 10px"/>
+    </div>
+  </div>
   <div v-if="isShow">
     <template v-if="brand==='sisley'">
       <h2>分钟</h2>
@@ -41,19 +50,19 @@ import OeroAdHorizon from "./views/Oero/ad-horizon.vue";
 import OeroTrafficHorizon from "./views/Oero/traffic-horizon.vue";
 
 import {useRoute} from "vue-router";
-import {nextTick, ref, watch, watchEffect} from "vue";
+import {computed, nextTick, provide, ref, watch} from "vue";
 
 const route = useRoute();
 const brand = ref(route.params.brand)
 
-const bands = ref(4)
+const bands = computed(() => parseFloat(bandsInput.value))
+const isNormalized = ref(false)
+const bandsInput = ref(4)
 const isShow = ref(true)
-const handleChange = (e) => {
-  if (!e.target.value) return
-  bands.value = parseFloat(e.target.value)
-}
 
-watch(bands, async (newVal) => {
+provide('isNormalized', isNormalized)
+
+watch([bands, isNormalized], async (newVal) => {
   console.log('watch bands', newVal)
   isShow.value = false
   await nextTick()

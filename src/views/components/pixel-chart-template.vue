@@ -2,8 +2,8 @@
 import * as d3 from 'd3'
 import {onMounted} from "vue";
 import * as XLSX from "xlsx";
-import {mapValueToColor, bilinearInterpolation, isNumber} from '@/utils/common.js'
-import { EXCULDE_FIELD } from '@/config.js';
+import {mapValueToColor, bilinearInterpolation, isNumber, countOccurrences} from '@/utils/common.js'
+import {EXCULDE_FIELD, SPECIAL_FIELD} from '@/config.js';
 
 const props = defineProps({
   NAME_SPACE: '',
@@ -39,7 +39,20 @@ onMounted(async () => {
   let data = XLSX.utils.sheet_to_json(worksheet);
   const fields = Object.keys(data[0]).filter(field => !EXCULDE_FIELD[Object.keys(EXCULDE_FIELD).filter((item) => props.TITLE.indexOf(item) !== -1)[0]].includes(field))
   // console.log(fields)
-  const fieldValues = fields.map(field => data.map(d => /%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field])))
+  const fieldValues = fields.map((field) =>
+      data.map((d) => {
+            if (SPECIAL_FIELD[Object.keys(SPECIAL_FIELD).filter((item) => props.TITLE.indexOf(item) !== -1)[0]].includes(field)) {
+              if (d[field]) {
+                return countOccurrences(d[field],`${field}：`)
+              } else {
+                return 0
+              }
+            } else {
+              return (/%$/.test(d[field]) ? parseFloat(d[field].slice(0, -1)) / 100 : parseFloat(d[field]))
+            }
+          }
+      )
+  );
   // console.log(fieldValues)
   GRID_COL_NUM = fieldValues[0].length
   GRID_ROW_NUM = fieldValues.length
@@ -54,7 +67,7 @@ onMounted(async () => {
     })
     return obj
   }, {})
-  // console.log(fieldObj)
+  console.log(props.TITLE, fieldObj)
   fields.map((k) => {
     fieldObj[k].mapValue.map((color, idx) => {
       let c = color
