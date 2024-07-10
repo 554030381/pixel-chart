@@ -18,7 +18,17 @@
       <router-link to="/oreo/horizon-graph">horizon-graph</router-link>
     </div>
     <div>
+      <router-link to="/oreo/omh">OMH</router-link>
+    </div>
+    <div>
       <router-link to="/oreo/periodic-vis">periodic-vis</router-link>
+    </div>
+    <h1>Online Streamer</h1>
+    <div>
+      <router-link to="/online-streamer/periodic-vis">periodic-vis</router-link>
+    </div>
+    <div>
+      <router-link to="/online-streamer/parallel-axis">parallel-axis</router-link>
     </div>
   </div>
 </template>

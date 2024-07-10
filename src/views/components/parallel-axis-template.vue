@@ -1,5 +1,5 @@
 <script setup>
-import {inject, nextTick, onMounted, reactive, defineProps} from "vue";
+import {inject, nextTick, onMounted, defineProps, ref} from "vue";
 import * as XLSX from "xlsx";
 import {mapValueToColor, isNumber, countOccurrences} from '@/utils/common.js'
 import {EXCULDE_FIELD, NORMALIZED_FIELD, SPECIAL_FIELD} from '@/config.js';
@@ -28,7 +28,7 @@ const TEXT_HEIGHT = 8
 
 const isNormalized = inject('isNormalized', false)
 
-const echartsOptions = reactive({})
+const echartsOption = ref({})
 
 onMounted(async () => {
   // 像素图数据（示例）
@@ -46,7 +46,7 @@ onMounted(async () => {
   let data = XLSX.utils.sheet_to_json(worksheet);
   console.log(data)
   let fields = []
-  console.log(props.FIELDS)
+  // console.log(props.FIELDS)
   if (props.FIELDS.length > 0) {
     fields = props.FIELDS
   } else {
@@ -61,7 +61,7 @@ onMounted(async () => {
     })
   }
   // const fields = FIELD.filter(field => !EXCULDE_FIELD.includes(field))
-  console.log(fields)
+  // console.log(fields)
   const fieldValues = fields.map((field) =>
       data.map((d) => {
             if (SPECIAL_FIELD[Object.keys(SPECIAL_FIELD).filter((item) => props.TITLE?.indexOf(item) !== -1)[0]]?.includes(field)) {
@@ -91,7 +91,7 @@ onMounted(async () => {
     })
     return obj
   }, {})
-  console.log(props.TITLE, fieldObj)
+  // console.log(props.TITLE, fieldObj)
 
   // 局部归一化
   let normalizedSortedFields = [];
@@ -189,52 +189,196 @@ onMounted(async () => {
     }
   })
   console.log(echartsFields)
-  Object.keys(echartsFields).map(k => {
-    const v = echartsFields[k]
-    echartsOptions[k] = {
-      title: {
-        text: k,
-        left: 'center'
+
+  const parallelAxisData = {}
+  Object.keys(echartsFields).forEach(name => {
+    const data = echartsFields[name]
+    parallelAxisData[name] = data.flatMap(day => {
+      return day.filter(item=>isNumber(item.value)).map(item => {
+        const dateArr = item.time.split(' ')
+        const date = parseInt(dateArr[0])
+        const time = parseInt(dateArr[1])
+        return [date, time, name, item.value]
+      })
+    })
+  })
+
+  const colorMap = {
+    小徐: '#5A6FC0',
+    徐悠雯: '#9ECA7F',
+    玉玉: '#F2CA6B',
+    张璐: '#DE6E6A',
+    心月: '#85BEDB',
+    轩轩: '#59A076',
+    小柏: '#EC8A5D',
+    薛雅文: '#9263AF'
+  }
+
+  let selectedItems = []
+  console.log('selectedItems', selectedItems)
+  const lineStyle = {
+    width: 1,
+    opacity: 0.5
+  };
+  echartsOption.value = {
+    backgroundColor: '#fff',
+    legend: {
+      bottom: 30,
+      data: Object.keys(parallelAxisData),
+      itemGap: 20,
+      textStyle: {
+        color: '#333',
+        fontSize: 14
+      }
+    },
+    tooltip: {
+      padding: 10,
+      backgroundColor: '#fff',
+      borderColor: '#777',
+      borderWidth: 1,
+      formatter: function (params) {
+        const pValue = params.value
+        let date = pValue[0]
+        let time = pValue[1]
+        let name = pValue[2]
+        let value = pValue[3]
+        if (selectedItems.length === 0) {
+          selectedItems = Object.keys(parallelAxisData).flatMap(name => parallelAxisData[name])
+        }
+        const dateSelected = [...new Set(selectedItems?.map(item => Array.isArray(item) ? item[0] : item['日期']))]
+        const timeSelected = [...new Set(selectedItems?.map(item => Array.isArray(item) ? item[1] : item['时间']))]
+        let res = ``
+        console.log('params', params, selectedItems, dateSelected, timeSelected)
+        if (dateSelected.length && timeSelected.length) {
+          res += `<div style="font-size: 16px;font-weight: 500">${props.SHEET_NAME}</div>`
+          dateSelected.forEach(d => {
+            timeSelected.forEach(t => {
+              const item = parallelAxisData[name].find(item => item[0] === d && item[1] === t && item[3] === value)
+              if (item?.length > 0 && isNumber(item[3])) {
+                date = item[0]
+                time = item[1]
+                name = item[2]
+                value = item[3]
+                res += `<div style="margin-top: 5px">${date} ${time}:0 ${name} ${value}</div>`;
+              }
+            })
+          })
+        } else {
+          res += `<div style="margin-top: 5px">${date} ${time}:0 ${name} ${value}</div>`;
+        }
+        return res
+      }
+    },
+    parallelAxis: [
+      {
+        dim: 0,
+        name: '日期',
+        min: echartsFields[props.FIELDS.at(-1)].at(0).at(0).time.split(' ')[0],
+        max: echartsFields[props.FIELDS.at(-1)].at(-1).at(-1).time.split(' ')[0],
       },
-      tooltip: {
-        trigger: 'item',
-        // formatter: '{a} <br/>{b}: {c} ({d})'
-        formatter: function (params) {
-          let tooltipContent = `${params.data.time}: ` + '<br>';
-          tooltipContent += params.data.realValue;
-          return tooltipContent;
+      {
+        dim: 1,
+        name: '时间',
+        min: 0,
+        max: 23,
+        axisLabel: {
+          formatter: function (value, index) {
+            if (value % 5 === 0 || value === 23) {
+              return value;
+            } else {
+              return '';
+            }
+          },
+          interval: 1 // Ensure each tick is displayed
         }
       },
-      series: []
-    };
-    const perRadius = Number(((RADIUS_RANGE[1] - RADIUS_RANGE[0]) / v.length).toFixed(2))
-    for (let _i in v) {
-      // console.log(_i, perRadius)
-      // console.log([`${RADIUS_RANGE[0] + Number(_i) * perRadius}%`, `${RADIUS_RANGE[0] + (Number(_i) + 1) * perRadius}%`])
-      const seriesData = v[_i]
-      // console.log(seriesData)
-      const seriesOption = {
-        name: _i,
-        type: 'pie',
-        selectedMode: 'single',
-        radius: [`${RADIUS_RANGE[0] + Number(_i) * perRadius}%`, `${RADIUS_RANGE[0] + (Number(_i) + 1) * perRadius}%`], // 这个是内圈的大小
-        label: {
-          position: 'inner'
+      {dim: 2, name: '主播', type: 'category', data: Object.keys(parallelAxisData)},
+      {
+        dim: 3,
+        name: props.SHEET_NAME,
+        min: 0,
+        max: Math.ceil(Math.max(...Object.keys(parallelAxisData).flatMap(name => parallelAxisData[name]).filter(item => isNumber(item[3])).map(item => item[3]))),
+      },
+    ],
+    parallel: {
+      left: '5%',
+      right: '18%',
+      bottom: 100,
+      parallelAxisDefault: {
+        type: 'value',
+        nameLocation: 'end',
+        nameGap: 20,
+        nameTextStyle: {
+          color: '#333',
+          fontSize: 12
         },
-        labelLine: {
+        axisLine: {
+          lineStyle: {
+            color: '#333'
+          }
+        },
+        axisTick: {
+          lineStyle: {
+            color: '#333'
+          }
+        },
+        splitLine: {
           show: false
         },
-        data: seriesData.map(item => ({...item, value: 1, realValue: item.value}))
+        axisLabel: {
+          color: '#333'
+        },
+      },
+      inactiveOpacity: 0
+    },
+    brush: {
+      toolbox: ['lineX', 'lineY', 'keep', 'clear'],
+      brushLink: 'all',
+      outOfBrush: {
+        colorAlpha: 0 // 未被选择部分的透明度
+      },
+      throttleType: 'debounce',
+      throttleDelay: 300 // 节流延时（毫秒）
+    },
+    series: Object.keys(parallelAxisData).map(name => {
+      return {
+        name,
+        type: 'parallel',
+        lineStyle: Object.assign({color: colorMap[name], lineStyle}),
+        data: parallelAxisData[name],
+        smooth: true
       }
-      echartsOptions[k].series.push(seriesOption)
-    }
-  })
-  // console.log(echartsOptions)
-  await nextTick(() => {
-    Object.keys(echartsOptions).map((k, i) => {
-      const chart = echarts.init(document.querySelector(`#${props.NAME_SPACE}-time-chart-${i}`))
-      chart.setOption(echartsOptions[k])
     })
+  }
+  console.log(echartsOption.value)
+  await nextTick(() => {
+    const chart = echarts.init(document.querySelector(`#${props.NAME_SPACE}-parallel-axis-chart`))
+    chart.setOption(echartsOption.value)
+
+    // 添加 brushselected 事件监听器
+    chart.on('brushselected', function (params) {
+      const selectedData = [];
+      const brushComponent = params.batch[0];
+
+      // 提取被刷选的索引
+      brushComponent.selected.forEach(function (brush) {
+        brush.dataIndex.forEach(function (dataIndex) {
+          selectedData.push(parallelAxisData[brush.seriesName][dataIndex]);
+        });
+      });
+
+      // 在控制台输出被刷选的数据
+      console.log('Selected Data:', selectedData);
+      selectedItems = selectedData.map(item => {
+        return {
+          日期: item[0],
+          时间: item[1],
+          主播: item[2],
+          值: item[3]
+        }
+      })
+    });
+
   })
 })
 </script>
@@ -242,25 +386,25 @@ onMounted(async () => {
 <template>
   <div class="periodic-vis">
     <h3>{{ props.TITLE }}</h3>
-    <div class="periodic-vis-container">
-      <div v-for="(v,i) in Object.keys(echartsOptions)" :id="`${props.NAME_SPACE}-time-chart-${i}`" class="periodic-vis-chart"></div>
+    <div class="parallel-axis-container">
+      <div :id="`${props.NAME_SPACE}-parallel-axis-chart`"></div>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.periodic-vis{
-  width: 100%;
+.periodic-vis {
+  width: 80%;
 }
 
-.periodic-vis-container{
+.parallel-axis-container {
   display: flex;
   flex-wrap: wrap;
   width: 100%;
 
   div {
-    width: 300px;
-    height: 300px;
+    width: 100%;
+    height: 400px;
   }
 }
 </style>

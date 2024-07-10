@@ -2,7 +2,7 @@
 import * as d3 from 'd3';
 import {defineProps, inject, onMounted} from 'vue';
 import * as XLSX from 'xlsx';
-import {countOccurrences, isNumber, mapValueToColor} from '@/utils/common.js';
+import {countOccurrences, isNumber, mapValueToColor, toScientificNotation} from '@/utils/common.js';
 import {EXCULDE_FIELD, NORMALIZED_FIELD, SPECIAL_FIELD} from '@/config.js';
 
 const props = defineProps({
@@ -67,8 +67,21 @@ onMounted(async () => {
     obj[field].mapValue = fieldValues[i].map((value) => {
       return mapValueToColor(COLOR, value, obj[field].min, obj[field].max);
     });
+    obj[field].scientificNotationValues = fieldValues[i].map((value) => {
+      return toScientificNotation(value);
+    });
     return obj;
   }, {});
+
+  fields.forEach(field => {
+    fieldObj[field].value = fieldObj[field].value.map((value, idx) => {
+      const scientificNotationValue = fieldObj[field].scientificNotationValues[idx]
+      return scientificNotationValue.mantissa + scientificNotationValue.exponent * 10
+    })
+    fieldObj[field].max = (Math.max(...fieldObj[field].scientificNotationValues.map((item) => item.exponent)) + 1)*10;
+    fieldObj[field].min = 0;
+    fieldObj[field].bands = Math.max(...fieldObj[field].scientificNotationValues.map((item) => item.exponent)) + 1
+  })
 
   // 局部归一化
   let normalizedSortedFields = [];
@@ -86,7 +99,7 @@ onMounted(async () => {
     normalizedArr.value.map((field) => {
       const values = fieldObj[field].value;
       fieldObj[field].normalizedValues = values.map(value =>
-          (value - globalMin) / (globalMax - globalMin)
+          (value - globalMin) / (globalMax - globalMin) * 100
       );
       fieldObj[field].valueCopy = fieldObj[field].value
       fieldObj[field].globalMin = globalMin
@@ -95,8 +108,9 @@ onMounted(async () => {
       if (isNormalized.value) {
         fieldObj[field].value = fieldObj[field].normalizedValues
         fieldObj[field].min = 0
-        fieldObj[field].max = 1
+        fieldObj[field].max = 100
       }
+      fieldObj[field].bands = 3
     })
   })
 
@@ -149,7 +163,7 @@ onMounted(async () => {
     const y = d3
         .scaleLinear()
         .domain([0, fieldObj[k].max])
-        .range([size, size - props.bands * (size - padding)]);
+        .range([size, size - rowData.bands * (size - padding)]);
 
     const area = d3
         .area()
@@ -198,7 +212,7 @@ onMounted(async () => {
     g.append('g')
         .attr('clip-path', (_, i) => `url(${new URL(`#${uid}-clip-${i}`, location)})`)
         .selectAll('use')
-        .data((_, i) => new Array(props.bands).fill(i))
+        .data((_, i) => new Array(rowData.bands).fill(i))
         .enter()
         .append('use')
         .attr('xlink:href', (i) => `${new URL(`#${uid}-path-${i}`, location)}`)

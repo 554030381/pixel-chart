@@ -69,9 +69,37 @@ function hslToRgb(h, s, l) {
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
 
+function hexToRgb(hex) {
+  // 移除可能存在的'#'符号
+  hex = hex.replace('#', '');
+
+  // 确保16进制颜色长度正确，如果是3位的短格式，则扩展为6位
+  if (hex.length === 3) {
+    hex = hex.split('').map(function (x) {
+      return x + x;
+    }).join('');
+  }
+
+  // 解析16进制颜色到RGB
+  var r = parseInt(hex.substring(0, 2), 16); // 红色分量
+  var g = parseInt(hex.substring(2, 4), 16); // 绿色分量
+  var b = parseInt(hex.substring(4, 6), 16); // 蓝色分量
+
+  // 返回RGB格式
+  return [r, g, b]
+}
+
 
 export function mapValueToColor(color, value, minValue, maxValue, minLightness = 10, maxLightness = 80) {
-  const hsl = rgbToHsl(color[0], color[1], color[2]);
+  let rgb  = null
+  if (!Array.isArray(color)) {
+    rgb = hexToRgb(color)
+  } else {
+    rgb = color
+  }
+
+  const hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+
   let lightness // 初始化为最小亮度值
 
   if (maxValue - minValue !== 0 && isNumber(value)) {
@@ -128,13 +156,40 @@ function getPixelColor(pixelArray, width, height, x, y) {
 }
 
 export function countOccurrences(str, char) {
-    // 使用正则表达式匹配字符，使用g标志匹配所有出现的字符
-    const regex = new RegExp(char, 'g');
-    // 使用match方法匹配所有出现的字符，并返回匹配结果的长度
-    const count = (str.match(regex) || []).length;
-    return count;
+  // 使用正则表达式匹配字符，使用g标志匹配所有出现的字符
+  const regex = new RegExp(char, 'g');
+  // 使用match方法匹配所有出现的字符，并返回匹配结果的长度
+  const count = (str.match(regex) || []).length;
+  return count;
 }
 
+export function toScientificNotation(number) {
+    if (number === 0) {
+        return { mantissa: 0, exponent: 0 };
+    }
+
+    let exponent = 0;
+    let mantissa = Math.abs(number);
+
+    // 处理大于等于10的数
+    while (mantissa >= 10) {
+        mantissa /= 10;
+        exponent += 1;
+    }
+
+    // 处理小于1的数
+    while (mantissa < 1) {
+        mantissa *= 10;
+        exponent -= 1;
+    }
+
+    // 考虑负数的情况
+    if (number < 0) {
+        mantissa = -mantissa;
+    }
+
+    return { mantissa: mantissa, exponent: exponent };
+}
 
 
 
